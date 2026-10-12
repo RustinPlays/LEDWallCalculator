@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#08111f">
   <title>JC LED Wall Planner</title>
-  <link rel="stylesheet" href="styles.css?v=1.0.0">
+  <link rel="stylesheet" href="styles.css?v=1.1.0">
 </head>
 <body>
 <header class="topbar">
@@ -29,7 +29,7 @@
       </div>
       <label>Panel profile<select id="panelProfile"></select></label>
       <div class="button-row"><button id="buildWallBtn" class="primary">Auto Build</button><button id="clearWallBtn" class="danger-ghost">Clear</button></div>
-      <div id="buildHint" class="hint">Builds the most efficient exact rectangle possible from the selected cabinet profile.</div>
+      <div id="buildHint" class="hint">LED cabinets stay upright: 500 × 1000 panels are always 1 m vertical.</div>
     </section>
 
     <section class="panel">
@@ -64,14 +64,18 @@
   <section class="workspace-column">
     <section class="workspace-toolbar panel compact">
       <div class="toolbar-left">
-        <div class="segmented" id="planTabs"><button data-plan="layout" class="active">Layout</button><button data-plan="data">Data Plan</button><button data-plan="power">Power Plan</button></div>
-        <span id="activePlanLabel" class="pill subtle">Layout</span>
+        <div class="segmented" id="planTabs"><button data-plan="layout" class="active">Layout</button><button data-plan="data">Edit Data</button><button data-plan="power">Edit Power</button></div>
+        <div class="plan-overlays" aria-label="Plan overlays">
+          <label class="overlay-toggle data"><input id="showDataOverlay" type="checkbox" checked> Data</label>
+          <label class="overlay-toggle power"><input id="showPowerOverlay" type="checkbox"> Power</label>
+        </div>
       </div>
       <div class="toolbar-right">
-        <button id="suggestPlanBtn">Suggest Plan</button>
-        <button id="newRouteBtn" class="hidden">+ New Route</button>
-        <button id="finishRouteBtn" class="hidden">Finish Route</button>
-        <button id="clearPlanBtn" class="hidden">Clear Plan</button>
+        <button id="suggestDataBtn">Suggest Data</button>
+        <button id="suggestPowerBtn">Suggest Power</button>
+        <button id="newRouteBtn" class="hidden">+ Route</button>
+        <button id="finishRouteBtn" class="hidden">Done</button>
+        <button id="clearPlanBtn" class="hidden">Clear</button>
       </div>
     </section>
 
@@ -134,8 +138,8 @@
   <div class="modal" id="helpModal">
     <div class="modal-header"><div><span class="kicker">JC LED WALL PLANNER</span><h2>Help</h2></div><button class="modal-close">×</button></div>
     <div class="modal-body">
-      <h3>Suggested plans</h3><p><b>Suggest Plan</b> generates efficient data and power routes from the current wall. Data routes are split by pixel capacity per port. Power routes are split by both cabinet link limits and the selected circuit/headroom.</p>
-      <h3>Manual plans</h3><p>Switch to Data Plan or Power Plan, press <b>+ New Route</b>, then click cabinets in the order you want them linked. Finish Route saves it. You can mix suggested and manually-created routes.</p>
+      <h3>Suggested plans</h3><p><b>Suggest Data</b> and <b>Suggest Power</b> are independent. Each creates an efficient left/right snake through the wall, splitting only when a new data port or power chain is required. Use the Data and Power checkboxes above the wall to show either or both plans.</p>
+      <h3>Manual plans</h3><p>Choose <b>Edit Data</b> or <b>Edit Power</b>, press <b>+ Route</b>, then click cabinets in cable order. Press <b>Done</b> when finished. Suggested plans can always be edited or replaced manually.</p>
       <h3>Front / Back</h3><p>Back view mirrors the wall so the routing view matches the technician standing behind it. Panel IDs stay attached to the same physical cabinet.</p>
       <h3>Power & data</h3><p>Power and pixel figures are planning calculations. Generic panel defaults are editable in <code>equipment-catalog.js</code>; for a real job, replace them with the exact manufacturer values for the cabinet and receiving system you are using.</p>
       <h3>Save</h3><p>Save stores the project in this browser. JSON lets you move it to another laptop. Print / PDF uses the browser's print dialog.</p>
@@ -148,7 +152,7 @@
       <label>Name<input id="customEqName" type="text" placeholder="Absen PL2.9 / processor name"></label>
       <label>Type<select id="customEqType"><option value="panel">LED Panel</option><option value="processor">Processor</option></select></label>
       <div id="customPanelFields">
-        <div class="form-grid two"><label>Width mm<input id="customWidth" type="number" value="500"></label><label>Height mm<input id="customHeight" type="number" value="500"></label></div>
+        <div class="form-grid two"><label>Width mm<input id="customWidth" type="number" value="500"></label><label>Height mm<input id="customHeight" type="number" value="1000"></label></div><div class="hint">Long LED cabinets are treated as portrait-only; if width is larger than height the planner will swap them.</div>
         <div class="form-grid two"><label>Pitch mm<input id="customPitch" type="number" step="0.01" value="2.9"></label><label>Weight kg<input id="customWeight" type="number" step="0.1" value="8"></label></div>
         <div class="form-grid two"><label>Max W<input id="customMaxW" type="number" value="200"></label><label>Average W<input id="customAvgW" type="number" value="90"></label></div>
         <label>Max panels per power chain<input id="customMaxLink" type="number" value="8"></label>
@@ -162,7 +166,7 @@
   </div>
 </div>
 
-<script src="equipment-catalog.js?v=1.0.0"></script>
-<script src="app.js?v=1.0.0"></script>
+<script src="equipment-catalog.js?v=1.1.0"></script>
+<script src="app.js?v=1.1.0"></script>
 </body>
 </html>

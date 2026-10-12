@@ -78,9 +78,9 @@ window.JC_LED_PROFILES = {
     { id:'g-500x500-p2', name:'Generic 500 x 500 P2', widthMm:500, heightMm:500, pitchMm:2, maxPowerW:200, avgPowerW:90, weightKg:8, maxPowerLink:8 },
     { id:'g-500x500-p3', name:'Generic 500 x 500 P3', widthMm:500, heightMm:500, pitchMm:3, maxPowerW:180, avgPowerW:80, weightKg:8, maxPowerLink:8 },
     { id:'g-500x500-p5', name:'Generic 500 x 500 P5', widthMm:500, heightMm:500, pitchMm:5, maxPowerW:160, avgPowerW:70, weightKg:8, maxPowerLink:10 },
-    { id:'g-1000x500-p2', name:'Generic 1000 x 500 P2', widthMm:1000, heightMm:500, pitchMm:2, maxPowerW:400, avgPowerW:180, weightKg:15, maxPowerLink:4 },
-    { id:'g-1000x500-p3', name:'Generic 1000 x 500 P3', widthMm:1000, heightMm:500, pitchMm:3, maxPowerW:360, avgPowerW:160, weightKg:15, maxPowerLink:4 },
-    { id:'g-1000x500-p5', name:'Generic 1000 x 500 P5', widthMm:1000, heightMm:500, pitchMm:5, maxPowerW:320, avgPowerW:140, weightKg:15, maxPowerLink:5 }
+    { id:'g-500x1000-p2', name:'Generic 500 x 1000 P2', widthMm:500, heightMm:1000, pitchMm:2, maxPowerW:400, avgPowerW:180, weightKg:15, maxPowerLink:4 },
+    { id:'g-500x1000-p3', name:'Generic 500 x 1000 P3', widthMm:500, heightMm:1000, pitchMm:3, maxPowerW:360, avgPowerW:160, weightKg:15, maxPowerLink:4 },
+    { id:'g-500x1000-p5', name:'Generic 500 x 1000 P5', widthMm:500, heightMm:1000, pitchMm:5, maxPowerW:320, avgPowerW:140, weightKg:15, maxPowerLink:5 }
   ],
   processors: [
     { id:'generic-led-processor', name:'LED Processor', outputs:4, pixelsPerOutput:650000, maxPixels:2600000, maxWidth:3840, maxHeight:3840, source:'AV Planner' },

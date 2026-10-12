@@ -26,6 +26,8 @@
     showCentre: true,
     showGround: true,
     showDimensions: true,
+    showDataOverlay: true,
+    showPowerOverlay: false,
     units: 'metric',
     processorId: 'novastar-generic',
     distroName: '16A Distro',
@@ -60,14 +62,15 @@
   function panelProfile(id){ return allPanelProfiles().find(p=>p.id===id) || allPanelProfiles()[0]; }
   function processorProfile(id){ return allProcessors().find(p=>p.id===id) || allProcessors()[0]; }
 
-  function makePanel(profile, x=0, y=0, rotation=0){
-    const rotated = rotation % 180 !== 0;
-    const widthMm = rotated ? profile.heightMm : profile.widthMm;
-    const heightMm = rotated ? profile.widthMm : profile.heightMm;
+  function makePanel(profile, x=0, y=0){
+    // LED cabinets are never rotated in this planner. Square cabinets stay square;
+    // long cabinets are always portrait with the 1 m dimension vertical.
+    let widthMm=Number(profile.widthMm)||500, heightMm=Number(profile.heightMm)||500;
+    if(widthMm>heightMm) [widthMm,heightMm]=[heightMm,widthMm];
     const pxW = Math.max(1,Math.round(widthMm/profile.pitchMm));
     const pxH = Math.max(1,Math.round(heightMm/profile.pitchMm));
     return {
-      id: uid('panel'), profileId: profile.id, x:snap(x), y:snap(y), rotation:rotated?90:0,
+      id: uid('panel'), profileId: profile.id, x:snap(x), y:snap(y), rotation:0,
       widthMm,heightMm,pitchMm:profile.pitchMm,pixelW:pxW,pixelH:pxH,
       maxPowerW:profile.maxPowerW,avgPowerW:profile.avgPowerW,weightKg:profile.weightKg,
       maxPowerLink:profile.maxPowerLink||8, customLabel:''
@@ -79,13 +82,15 @@
       panels:state.panels,dataRoutes:state.dataRoutes,powerRoutes:state.powerRoutes,
       selectedIds:state.selectedIds,view:state.view,planMode:state.planMode,currentRouteId:null,
       numberingMode:state.numberingMode,showIds:state.showIds,showCentre:state.showCentre,
-      showGround:state.showGround,showDimensions:state.showDimensions,units:state.units,
+      showGround:state.showGround,showDimensions:state.showDimensions,showDataOverlay:state.showDataOverlay,showPowerOverlay:state.showPowerOverlay,units:state.units,
       processorId:state.processorId,distroName:state.distroName
     });
   }
   function restore(s, render=true){
     if(!s) return;
     Object.assign(state, clone(s));
+    state.panels=(state.panels||[]).map(p=>{if(p.widthMm>p.heightMm){[p.widthMm,p.heightMm]=[p.heightMm,p.widthMm];[p.pixelW,p.pixelH]=[p.pixelH,p.pixelW];}p.rotation=0;return p;});
+    if(state.showDataOverlay===undefined)state.showDataOverlay=true;if(state.showPowerOverlay===undefined)state.showPowerOverlay=false;
     state.currentRouteId=null;
     state.dirty=true;
     if(render) renderAll();
@@ -176,11 +181,7 @@
     state.dataRoutes=state.dataRoutes.filter(r=>r.panelIds.length); state.powerRoutes=state.powerRoutes.filter(r=>r.panelIds.length);
     state.selectedIds=[]; markDirty();renderAll();
   }
-  function rotateSelected(){
-    if(!state.selectedIds.length)return; pushHistory();
-    for(const id of state.selectedIds){ const p=state.panels.find(x=>x.id===id); if(!p)continue; [p.widthMm,p.heightMm]=[p.heightMm,p.widthMm]; [p.pixelW,p.pixelH]=[p.pixelH,p.pixelW]; p.rotation=(p.rotation+90)%180; }
-    markDirty();renderAll();
-  }
+
   function selectRow(){
     if(!state.selectedIds.length)return; const p=state.panels.find(x=>x.id===state.selectedIds[0]); if(!p)return; state.selectedIds=state.panels.filter(q=>Math.abs(q.y-p.y)<1).map(q=>q.id);renderCanvas();
   }
@@ -227,7 +228,6 @@
   function routePixels(route){ return route.panelIds.reduce((s,id)=>{const p=state.panels.find(x=>x.id===id);return s+(p?p.pixelW*p.pixelH:0)},0); }
   function routeWatts(route){ return route.panelIds.reduce((s,id)=>{const p=state.panels.find(x=>x.id===id);return s+(p?p.maxPowerW:0)},0); }
 
-  function suggestActivePlan(){ if(state.planMode==='data')suggestDataPlan(); else if(state.planMode==='power')suggestPowerPlan(); else {suggestDataPlan();suggestPowerPlan();} }
   function currentRoutes(){ return state.planMode==='data'?state.dataRoutes:state.planMode==='power'?state.powerRoutes:[]; }
   function newRoute(){
     if(state.planMode==='layout')return; pushHistory();
@@ -301,14 +301,33 @@
   function dragEnd(){ document.removeEventListener('pointermove',dragMove); drag=null; if(suppressClick)setTimeout(()=>suppressClick=false,40); }
 
   function renderRoutes(svg,b){
-    const routes=state.planMode==='data'?state.dataRoutes:state.planMode==='power'?state.powerRoutes:[];
-    routes.forEach((r,ri)=>{
-      const pts=r.panelIds.map(id=>state.panels.find(p=>p.id===id)).filter(Boolean).map(p=>screenPoint(p,b)); if(!pts.length)return;
-      const color=state.planMode==='power'?COLORS[((r.circuit||1)-1)%COLORS.length]:COLORS[ri%COLORS.length];
-      if(pts.length>1){const pl=document.createElementNS('http://www.w3.org/2000/svg','polyline');pl.setAttribute('points',pts.map(p=>`${p.x},${p.y}`).join(' '));pl.setAttribute('class','route-path');pl.setAttribute('stroke',color);svg.append(pl);}
-      const first=pts[0];const home=document.createElementNS('http://www.w3.org/2000/svg','line');home.setAttribute('x1',Math.max(12,first.x-65));home.setAttribute('y1',first.y);home.setAttribute('x2',first.x);home.setAttribute('y2',first.y);home.setAttribute('class','route-path route-home');home.setAttribute('stroke',color);svg.append(home);
-      const t=document.createElementNS('http://www.w3.org/2000/svg','text');t.setAttribute('x',Math.max(8,first.x-62));t.setAttribute('y',first.y-7);t.setAttribute('fill',color);t.setAttribute('class','route-label');t.textContent=state.planMode==='power'?`${r.label} · C${r.circuit||'?'}`:`${r.label}`;svg.append(t);
-    });
+    // Data and power overlays are independent from the edit mode. This keeps the
+    // wall simple: show neither, either one, or both at once.
+    const sets=[];
+    if(state.showDataOverlay) sets.push({type:'data',routes:state.dataRoutes,offset:-3});
+    if(state.showPowerOverlay) sets.push({type:'power',routes:state.powerRoutes,offset:3});
+
+    // SVG arrowheads make the suggested snake direction obvious from front or back.
+    const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
+    svg.append(defs);
+    sets.forEach(({type,routes,offset})=>routes.forEach((r,ri)=>{
+      const panels=r.panelIds.map(id=>state.panels.find(p=>p.id===id)).filter(Boolean);
+      const pts=panels.map(p=>screenPoint(p,b));
+      if(!pts.length)return;
+      const color=type==='power'?COLORS[((r.circuit||1)-1)%COLORS.length]:COLORS[ri%COLORS.length];
+      const markerId=`arrow-${type}-${ri}`;
+      const marker=document.createElementNS('http://www.w3.org/2000/svg','marker');
+      marker.setAttribute('id',markerId);marker.setAttribute('viewBox','0 0 10 10');marker.setAttribute('refX','8');marker.setAttribute('refY','5');marker.setAttribute('markerWidth','5');marker.setAttribute('markerHeight','5');marker.setAttribute('orient','auto-start-reverse');
+      const arrow=document.createElementNS('http://www.w3.org/2000/svg','path');arrow.setAttribute('d','M 0 0 L 10 5 L 0 10 z');arrow.setAttribute('fill',color);marker.append(arrow);defs.append(marker);
+      if(pts.length>1){
+        const pl=document.createElementNS('http://www.w3.org/2000/svg','polyline');
+        pl.setAttribute('points',pts.map(p=>`${p.x},${p.y+offset}`).join(' '));
+        pl.setAttribute('class',`route-path ${type}-route`);pl.setAttribute('stroke',color);pl.setAttribute('marker-end',`url(#${markerId})`);svg.append(pl);
+      }
+      const first=pts[0];
+      const home=document.createElementNS('http://www.w3.org/2000/svg','line');home.setAttribute('x1',Math.max(12,first.x-65));home.setAttribute('y1',first.y+offset);home.setAttribute('x2',first.x);home.setAttribute('y2',first.y+offset);home.setAttribute('class',`route-path route-home ${type}-route`);home.setAttribute('stroke',color);svg.append(home);
+      const t=document.createElementNS('http://www.w3.org/2000/svg','text');t.setAttribute('x',Math.max(8,first.x-62));t.setAttribute('y',first.y-8+offset);t.setAttribute('fill',color);t.setAttribute('class','route-label');t.textContent=type==='power'?`${r.label} · C${r.circuit||'?'}`:r.label;svg.append(t);
+    }));
   }
 
   function renderDimensionReadout(){
@@ -387,13 +406,18 @@
 
   function renderPlanControls(){
     document.querySelectorAll('#planTabs button').forEach(b=>b.classList.toggle('active',b.dataset.plan===state.planMode));
-    $('activePlanLabel').textContent=state.planMode==='layout'?'Layout':state.planMode==='data'?'Data Plan':'Power Plan';
-    const planning=state.planMode!=='layout';$('newRouteBtn').classList.toggle('hidden',!planning);$('finishRouteBtn').classList.toggle('hidden',!planning);$('clearPlanBtn').classList.toggle('hidden',!planning);$('suggestPlanBtn').textContent=state.planMode==='layout'?'Suggest Power + Data':`Suggest ${state.planMode==='data'?'Data':'Power'} Plan`;
+    const planning=state.planMode!=='layout';
+    $('newRouteBtn').classList.toggle('hidden',!planning);
+    $('finishRouteBtn').classList.toggle('hidden',!planning);
+    $('clearPlanBtn').classList.toggle('hidden',!planning);
+    $('showDataOverlay').checked=!!state.showDataOverlay;
+    $('showPowerOverlay').checked=!!state.showPowerOverlay;
   }
 
   function renderAll(full=true){ renderPlanControls();renderCanvas();renderStats();renderSummaries();renderValidation();updateUndoRedo();if(full)syncControlsFromState(); }
   function syncControlsFromState(){
     $('numberingMode').value=state.numberingMode;$('unitMode').value=state.units;$('showIds').checked=state.showIds;$('showCentre').checked=state.showCentre;$('showGround').checked=state.showGround;$('showDimensions').checked=state.showDimensions;
+    $('showDataOverlay').checked=!!state.showDataOverlay;$('showPowerOverlay').checked=!!state.showPowerOverlay;
     document.querySelectorAll('#viewTabs button').forEach(b=>b.classList.toggle('active',b.dataset.view===state.view));
   }
 
@@ -438,7 +462,7 @@
   function saveCustomEquipment(){
     const name=$('customEqName').value.trim();if(!name)return alert('Enter a name.'); const type=$('customEqType').value;
     if(type==='panel'){
-      const p={id:`custom-panel-${uid()}`,name,widthMm:num($('customWidth').value,500),heightMm:num($('customHeight').value,500),pitchMm:num($('customPitch').value,2.9),weightKg:num($('customWeight').value,8),maxPowerW:num($('customMaxW').value,200),avgPowerW:num($('customAvgW').value,90),maxPowerLink:num($('customMaxLink').value,8)};customProfiles.panels.push(p);saveCustomProfiles();populateProfiles();$('panelProfile').value=p.id;
+      let widthMm=num($('customWidth').value,500),heightMm=num($('customHeight').value,1000);if(widthMm>heightMm)[widthMm,heightMm]=[heightMm,widthMm];const p={id:`custom-panel-${uid()}`,name,widthMm,heightMm,pitchMm:num($('customPitch').value,2.9),weightKg:num($('customWeight').value,8),maxPowerW:num($('customMaxW').value,200),avgPowerW:num($('customAvgW').value,90),maxPowerLink:num($('customMaxLink').value,8)};customProfiles.panels.push(p);saveCustomProfiles();populateProfiles();$('panelProfile').value=p.id;
     } else {
       const p={id:`custom-processor-${uid()}`,name,outputs:num($('customOutputs').value,4),pixelsPerOutput:num($('customPixelsPerOutput').value,650000),maxPixels:num($('customMaxPixels').value,2600000),maxWidth:99999,maxHeight:99999,source:'Custom'};customProfiles.processors.push(p);saveCustomProfiles();populateProfiles();$('processorSelect').value=p.id;applyProcessorSelection();
     }
@@ -447,12 +471,14 @@
 
   function bind(){
     $('buildWallBtn').onclick=quickBuild;$('clearWallBtn').onclick=()=>{if(!state.panels.length)return;if(!confirm('Clear the wall and all routing plans?'))return;pushHistory();state.panels=[];state.dataRoutes=[];state.powerRoutes=[];state.selectedIds=[];markDirty();renderAll();};
-    $('addPanelBtn').onclick=addPanel;$('duplicateBtn').onclick=duplicateSelected;$('deleteBtn').onclick=deleteSelected;$('rotateBtn').onclick=rotateSelected;$('selectRowBtn').onclick=selectRow;$('selectColBtn').onclick=selectCol;$('clearSelectionBtn').onclick=()=>{state.selectedIds=[];renderCanvas()};
+    $('addPanelBtn').onclick=addPanel;$('duplicateBtn').onclick=duplicateSelected;$('deleteBtn').onclick=deleteSelected;$('selectRowBtn').onclick=selectRow;$('selectColBtn').onclick=selectCol;$('clearSelectionBtn').onclick=()=>{state.selectedIds=[];renderCanvas()};
     $('numberingMode').onchange=e=>{state.numberingMode=e.target.value;markDirty();renderAll()};$('unitMode').onchange=e=>{state.units=e.target.value;renderAll()};
     for(const id of ['showIds','showCentre','showGround','showDimensions']) $(id).onchange=e=>{state[id]=e.target.checked;renderAll()};
     document.querySelectorAll('#viewTabs button').forEach(b=>b.onclick=()=>{state.view=b.dataset.view;renderAll()});
     document.querySelectorAll('#planTabs button').forEach(b=>b.onclick=()=>{state.planMode=b.dataset.plan;state.currentRouteId=null;renderAll()});
-    $('suggestPlanBtn').onclick=suggestActivePlan;$('newRouteBtn').onclick=newRoute;$('finishRouteBtn').onclick=finishRoute;$('clearPlanBtn').onclick=clearPlan;
+    $('suggestDataBtn').onclick=()=>{suggestDataPlan();state.showDataOverlay=true;renderAll()};$('suggestPowerBtn').onclick=()=>{suggestPowerPlan();state.showPowerOverlay=true;renderAll()};
+    $('showDataOverlay').onchange=e=>{state.showDataOverlay=e.target.checked;renderCanvas()};$('showPowerOverlay').onchange=e=>{state.showPowerOverlay=e.target.checked;renderCanvas()};
+    $('newRouteBtn').onclick=newRoute;$('finishRouteBtn').onclick=finishRoute;$('clearPlanBtn').onclick=clearPlan;
     $('processorSelect').onchange=applyProcessorSelection;$('distroSelect').onchange=applyDistroSelection;
     for(const id of ['pixelsPerPort','processorOutputs','supplyVoltage','circuitAmps','headroom','sparePercent','sparePanels','rasterW','rasterH']) $(id).oninput=()=>{markDirty();renderAll(false)};
     $('undoBtn').onclick=undo;$('redoBtn').onclick=redo;$('saveBtn').onclick=saveProject;$('loadBtn').onclick=loadProject;
@@ -460,14 +486,12 @@
     $('helpBtn').onclick=()=>openModal('helpModal');document.querySelectorAll('.modal-close').forEach(b=>b.onclick=closeModal);$('modalBackdrop').addEventListener('click',e=>{if(e.target===$('modalBackdrop'))closeModal()});
     $('customEquipmentBtn').onclick=()=>openModal('customEquipmentModal');$('customEqType').onchange=e=>{$('customPanelFields').classList.toggle('hidden',e.target.value!=='panel');$('customProcessorFields').classList.toggle('hidden',e.target.value!=='processor')};$('saveCustomEqBtn').onclick=saveCustomEquipment;
     $('exportJsonBtn').onclick=exportJson;$('importJsonBtn').onclick=()=>$('importFile').click();$('importFile').onchange=e=>{const f=e.target.files?.[0];if(f)importJson(f);e.target.value=''};$('exportCsvBtn').onclick=exportCsv;$('exportPngBtn').onclick=exportPng;$('printBtn').onclick=()=>window.print();
-    document.addEventListener('keydown',e=>{if(['INPUT','SELECT','TEXTAREA'].includes(document.activeElement?.tagName))return;if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo();}else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='y'){e.preventDefault();redo();}else if(e.key==='Delete')deleteSelected();else if(e.key.toLowerCase()==='r')rotateSelected();else if(e.key==='Escape'){state.currentRouteId=null;renderAll();}});
+    document.addEventListener('keydown',e=>{if(['INPUT','SELECT','TEXTAREA'].includes(document.activeElement?.tagName))return;if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo();}else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='y'){e.preventDefault();redo();}else if(e.key==='Delete')deleteSelected();else if(e.key==='Escape'){state.currentRouteId=null;renderAll();}});
     window.addEventListener('beforeunload',e=>{if(state.dirty){e.preventDefault();e.returnValue='';}});
   }
 
   function init(){
     populateProfiles();
-    // Add rotate control without making the HTML noisy.
-    if(!$('rotateBtn')){const b=document.createElement('button');b.id='rotateBtn';b.textContent='Rotate';$('duplicateBtn').after(b);}
     bind();
     $('processorSelect').value=state.processorId;$('distroSelect').value=state.distroName;applyProcessorSelection();
     updateUndoRedo();renderAll();

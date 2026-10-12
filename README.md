@@ -1,4 +1,4 @@
-# JC LED Wall Planner v1.0.0
+# JC LED Wall Planner v1.1.0
 
 Static browser-based LED wall layout, power, data and cable planning tool.
 
@@ -24,3 +24,12 @@ The included panel power/weight/link limits are generic planning defaults. For a
 
 ## GitHub Pages
 Upload all files in this folder to the root of a GitHub Pages repository. No build step is required.
+
+
+## v1.1 changes
+- Long LED cabinets are portrait-only: 500 × 1000 mm (1 m vertical). No landscape/rotate mode.
+- Separate **Suggest Data** and **Suggest Power** actions.
+- Data and Power overlays can be shown/hidden independently, including both at once.
+- Suggested routing follows a left/right serpentine (snake) pattern across the wall.
+- Direction arrows are drawn on routes; power is dashed so simultaneous overlays remain readable.
+- Toolbar/UI simplified for faster show-site use.
