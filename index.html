@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#08111f">
+  <title>JC LED Wall Planner</title>
+  <link rel="stylesheet" href="styles.css?v=1.0.0">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><div class="brand-mark">JC</div><div><div class="eyebrow">JUSTIN CREATIVE</div><h1>LED Wall Planner</h1></div></div>
+  <div class="top-actions">
+    <span id="projectStatus" class="pill">Unsaved</span>
+    <button id="undoBtn" title="Undo">↶</button><button id="redoBtn" title="Redo">↷</button>
+    <button id="saveBtn">Save</button><button id="loadBtn">Load</button>
+    <button id="presentationBtn">Presentation</button>
+    <button id="helpBtn">? Help</button>
+  </div>
+</header>
+
+<main class="app-grid">
+  <aside class="sidebar left-sidebar">
+    <section class="panel">
+      <div class="panel-heading"><div><span class="kicker">BUILD</span><h2>Quick Wall</h2></div></div>
+      <div class="form-grid two">
+        <label>Width (m)<input id="quickWidth" type="number" min="0.5" step="0.5" value="6"></label>
+        <label>Height (m)<input id="quickHeight" type="number" min="0.5" step="0.5" value="3"></label>
+      </div>
+      <label>Panel profile<select id="panelProfile"></select></label>
+      <div class="button-row"><button id="buildWallBtn" class="primary">Auto Build</button><button id="clearWallBtn" class="danger-ghost">Clear</button></div>
+      <div id="buildHint" class="hint">Builds the most efficient exact rectangle possible from the selected cabinet profile.</div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-heading"><div><span class="kicker">MANUAL</span><h2>Panels</h2></div></div>
+      <div class="button-row wrap"><button id="addPanelBtn">+ Panel</button><button id="duplicateBtn">Duplicate</button><button id="deleteBtn">Delete</button></div>
+      <div class="button-row wrap"><button id="selectRowBtn">Select Row</button><button id="selectColBtn">Select Column</button><button id="clearSelectionBtn">Clear Selection</button></div>
+      <label>Numbering<select id="numberingMode"><option value="sequential">Sequential</option><option value="grid">Grid (A1)</option><option value="data">Data order</option><option value="custom">Custom</option></select></label>
+      <div class="hint">Click panels to select. Ctrl/Cmd-click for multi-select. Drag selected panels to reposition.</div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-heading"><div><span class="kicker">VIEW</span><h2>Layout View</h2></div></div>
+      <div class="segmented" id="viewTabs"><button data-view="front" class="active">Front</button><button data-view="back">Back</button></div>
+      <div class="toggle-grid">
+        <label class="check"><input id="showIds" type="checkbox" checked>Panel IDs</label>
+        <label class="check"><input id="showCentre" type="checkbox" checked>Centre line</label>
+        <label class="check"><input id="showGround" type="checkbox" checked>Ground line</label>
+        <label class="check"><input id="showDimensions" type="checkbox" checked>Dimensions</label>
+      </div>
+      <label>Units<select id="unitMode"><option value="metric">Metric</option><option value="imperial">Feet / inches</option></select></label>
+    </section>
+
+    <section class="panel">
+      <div class="panel-heading"><div><span class="kicker">EQUIPMENT</span><h2>Our Gear</h2></div></div>
+      <label>Processor<select id="processorSelect"></select></label>
+      <label>Power distro<select id="distroSelect"></select></label>
+      <button id="customEquipmentBtn">+ Custom Equipment</button>
+      <div class="hint">This planner contains its own snapshot of the AV Planner equipment catalogue, so it does not need to cross-reference another app.</div>
+    </section>
+  </aside>
+
+  <section class="workspace-column">
+    <section class="workspace-toolbar panel compact">
+      <div class="toolbar-left">
+        <div class="segmented" id="planTabs"><button data-plan="layout" class="active">Layout</button><button data-plan="data">Data Plan</button><button data-plan="power">Power Plan</button></div>
+        <span id="activePlanLabel" class="pill subtle">Layout</span>
+      </div>
+      <div class="toolbar-right">
+        <button id="suggestPlanBtn">Suggest Plan</button>
+        <button id="newRouteBtn" class="hidden">+ New Route</button>
+        <button id="finishRouteBtn" class="hidden">Finish Route</button>
+        <button id="clearPlanBtn" class="hidden">Clear Plan</button>
+      </div>
+    </section>
+
+    <section class="canvas-panel panel">
+      <div id="wallViewport" class="wall-viewport">
+        <div id="wallCanvas" class="wall-canvas">
+          <div id="centreLine" class="reference-line centre-line"></div>
+          <div id="groundLine" class="reference-line ground-line"></div>
+          <svg id="routeOverlay" class="route-overlay" xmlns="http://www.w3.org/2000/svg"></svg>
+          <div id="panelLayer" class="panel-layer"></div>
+        </div>
+      </div>
+      <div id="dimensionReadout" class="dimension-readout"></div>
+      <div class="canvas-help">Wheel to scroll · Shift+wheel horizontal · Ctrl/Cmd-click multi-select · drag panels in Layout · click panels while building Data/Power routes.</div>
+    </section>
+
+    <section class="bottom-grid">
+      <section class="panel stats-panel"><div class="panel-heading"><div><span class="kicker">WALL</span><h2>Wall Stats</h2></div></div><div id="wallStats" class="metric-grid"></div></section>
+      <section class="panel validation-panel"><div class="panel-heading"><div><span class="kicker">CHECK</span><h2>Validation</h2></div></div><div id="validationList" class="validation-list"></div></section>
+    </section>
+  </section>
+
+  <aside class="sidebar right-sidebar">
+    <section class="panel">
+      <div class="panel-heading"><div><span class="kicker">DATA</span><h2>Data Capacity</h2></div></div>
+      <div class="form-grid two"><label>Pixels / port<input id="pixelsPerPort" type="number" min="10000" step="10000" value="650000"></label><label>Outputs<input id="processorOutputs" type="number" min="1" max="64" value="4"></label></div>
+      <div id="dataSummary" class="summary-box"></div>
+      <div id="dataRoutes" class="route-list"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-heading"><div><span class="kicker">POWER</span><h2>Power Capacity</h2></div></div>
+      <div class="form-grid two"><label>Supply (V)<input id="supplyVoltage" type="number" min="100" max="260" value="230"></label><label>Circuit (A)<select id="circuitAmps"><option>10</option><option selected>16</option><option>20</option><option>32</option></select></label></div>
+      <label>Planning headroom<select id="headroom"><option value="1">100%</option><option value="0.9">90%</option><option value="0.8" selected>80%</option></select></label>
+      <div id="powerSummary" class="summary-box"></div>
+      <div id="powerRoutes" class="route-list"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-heading"><div><span class="kicker">CABLES</span><h2>Cable Count</h2></div></div>
+      <div class="form-grid two"><label>Spare %<input id="sparePercent" type="number" min="0" max="100" step="1" value="10"></label><label>Spare panels<input id="sparePanels" type="number" min="0" step="1" value="0"></label></div>
+      <div id="cableSummary" class="summary-box"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-heading"><div><span class="kicker">PROCESSOR</span><h2>Canvas Helper</h2></div></div>
+      <div class="form-grid two"><label>Raster W<input id="rasterW" type="number" min="1" value="1920"></label><label>Raster H<input id="rasterH" type="number" min="1" value="1080"></label></div>
+      <div id="canvasHelper" class="summary-box"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-heading"><div><span class="kicker">OUTPUT</span><h2>Export</h2></div></div>
+      <div class="button-row wrap"><button id="exportJsonBtn">JSON</button><button id="importJsonBtn">Import</button><button id="exportCsvBtn">BOM CSV</button><button id="exportPngBtn">PNG</button><button id="printBtn">Print / PDF</button></div>
+      <input id="importFile" class="hidden" type="file" accept="application/json,.json">
+    </section>
+  </aside>
+</main>
+
+<div id="modalBackdrop" class="modal-backdrop hidden">
+  <div class="modal" id="helpModal">
+    <div class="modal-header"><div><span class="kicker">JC LED WALL PLANNER</span><h2>Help</h2></div><button class="modal-close">×</button></div>
+    <div class="modal-body">
+      <h3>Suggested plans</h3><p><b>Suggest Plan</b> generates efficient data and power routes from the current wall. Data routes are split by pixel capacity per port. Power routes are split by both cabinet link limits and the selected circuit/headroom.</p>
+      <h3>Manual plans</h3><p>Switch to Data Plan or Power Plan, press <b>+ New Route</b>, then click cabinets in the order you want them linked. Finish Route saves it. You can mix suggested and manually-created routes.</p>
+      <h3>Front / Back</h3><p>Back view mirrors the wall so the routing view matches the technician standing behind it. Panel IDs stay attached to the same physical cabinet.</p>
+      <h3>Power & data</h3><p>Power and pixel figures are planning calculations. Generic panel defaults are editable in <code>equipment-catalog.js</code>; for a real job, replace them with the exact manufacturer values for the cabinet and receiving system you are using.</p>
+      <h3>Save</h3><p>Save stores the project in this browser. JSON lets you move it to another laptop. Print / PDF uses the browser's print dialog.</p>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="customEquipmentModal">
+    <div class="modal-header"><div><span class="kicker">CUSTOM</span><h2>Add Equipment Profile</h2></div><button class="modal-close">×</button></div>
+    <div class="modal-body">
+      <label>Name<input id="customEqName" type="text" placeholder="Absen PL2.9 / processor name"></label>
+      <label>Type<select id="customEqType"><option value="panel">LED Panel</option><option value="processor">Processor</option></select></label>
+      <div id="customPanelFields">
+        <div class="form-grid two"><label>Width mm<input id="customWidth" type="number" value="500"></label><label>Height mm<input id="customHeight" type="number" value="500"></label></div>
+        <div class="form-grid two"><label>Pitch mm<input id="customPitch" type="number" step="0.01" value="2.9"></label><label>Weight kg<input id="customWeight" type="number" step="0.1" value="8"></label></div>
+        <div class="form-grid two"><label>Max W<input id="customMaxW" type="number" value="200"></label><label>Average W<input id="customAvgW" type="number" value="90"></label></div>
+        <label>Max panels per power chain<input id="customMaxLink" type="number" value="8"></label>
+      </div>
+      <div id="customProcessorFields" class="hidden">
+        <div class="form-grid two"><label>Outputs<input id="customOutputs" type="number" value="4"></label><label>Pixels / output<input id="customPixelsPerOutput" type="number" value="650000"></label></div>
+        <label>Max pixels<input id="customMaxPixels" type="number" value="2600000"></label>
+      </div>
+      <button id="saveCustomEqBtn" class="primary">Save Profile</button>
+    </div>
+  </div>
+</div>
+
+<script src="equipment-catalog.js?v=1.0.0"></script>
+<script src="app.js?v=1.0.0"></script>
+</body>
+</html>
